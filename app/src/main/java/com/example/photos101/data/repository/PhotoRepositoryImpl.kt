@@ -2,7 +2,6 @@ package com.example.photos101.data.repository
 
 import com.example.photos101.data.remote.FlickrApi
 import com.example.photos101.data.remote.dto.PhotosResponseDto
-import com.example.photos101.data.remote.mapper.parseTotal
 import com.example.photos101.data.remote.mapper.toDetailDomain
 import com.example.photos101.data.remote.mapper.toDomain
 import com.example.photos101.domain.model.PagedResult
@@ -12,6 +11,7 @@ import com.example.photos101.domain.repository.PhotoRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
+
 class PhotoRepositoryImpl(
     private val api: FlickrApi,
 ) : PhotoRepository {
@@ -63,12 +63,11 @@ class PhotoRepositoryImpl(
         if (stat != "ok" || photos == null) return null
         val wrapper = photos
         val items = wrapper.photo.map { it.toDomain() }
-        val total = parseTotal(wrapper.totalRaw)
         val result = PagedResult(
             items = items,
             page = wrapper.page,
             totalPages = wrapper.pages,
-            totalCount = total,
+            totalCount = wrapper.totalRaw
         )
         return Result.success(result)
     }

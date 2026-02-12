@@ -20,7 +20,7 @@ data class PhotosWrapperDto(
     @SerialName("page") val page: Int = 1,
     @SerialName("pages") val pages: Int = 1,
     @SerialName("perpage") val perpage: Int = 0,
-    @SerialName("total") val totalRaw: String = "0", // Flickr may return total as string
+    @SerialName("total") val totalRaw: Int = 0,
     @SerialName("photo") val photo: List<PhotoDto> = emptyList(),
 )
 
