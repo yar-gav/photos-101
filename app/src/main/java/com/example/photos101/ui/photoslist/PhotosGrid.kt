@@ -19,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -80,15 +81,17 @@ fun PhotosGrid(
             }
         }
 
-        // Trigger load more when near the end
+        // Endless scroll: when user scrolls near the end, fetch next page
         LaunchedEffect(gridState, hasMore, isLoadingMore) {
-            if (!hasMore || isLoadingMore) return@LaunchedEffect
-            val layoutInfo = gridState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            if (totalItems > 0 && lastVisibleIndex >= totalItems - LOAD_MORE_THRESHOLD) {
-                onLoadMore()
-            }
+            snapshotFlow { gridState.layoutInfo }
+                .collect { layoutInfo ->
+                    if (!hasMore || isLoadingMore) return@collect
+                    val totalItems = layoutInfo.totalItemsCount
+                    val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                    if (totalItems > 0 && lastVisibleIndex >= totalItems - LOAD_MORE_THRESHOLD) {
+                        onLoadMore()
+                    }
+                }
         }
     }
 }

@@ -92,7 +92,13 @@ class PhotosListViewModel(
                 }
             }
             .onFailure { t ->
-                _state.value = PhotosListState.Error(t, null)
+                val current = _state.value as? PhotosListState.RecentPhotos
+                if (replace || current == null) {
+                    _state.value = PhotosListState.Error(t, null)
+                } else {
+                    // Keep list, clear loading-more flag so user can retry scroll
+                    _state.value = current.copy(isLoadingMore = false)
+                }
             }
     }
 
@@ -140,7 +146,12 @@ class PhotosListViewModel(
                 }
             }
             .onFailure { t ->
-                _state.value = PhotosListState.Error(t, query)
+                val current = _state.value as? PhotosListState.SearchResults
+                if (replace || current == null || current.query != query) {
+                    _state.value = PhotosListState.Error(t, query)
+                } else {
+                    _state.value = current.copy(isLoadingMore = false)
+                }
             }
     }
 
