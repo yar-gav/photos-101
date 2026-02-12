@@ -6,6 +6,7 @@ import org.koin.core.context.startKoin
 import org.koin.core.module.Module
 import com.example.photos101.di.networkModule
 import com.example.photos101.di.repositoryModule
+import com.example.photos101.di.useCaseModule
 
 class Photos101Application : Application() {
 
@@ -20,5 +21,6 @@ class Photos101Application : Application() {
     private fun appModules(): List<Module> = listOf(
         networkModule,
         repositoryModule,
+        useCaseModule,
     )
 }
