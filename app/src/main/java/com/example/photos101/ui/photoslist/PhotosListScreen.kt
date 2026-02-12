@@ -1,8 +1,11 @@
 package com.example.photos101.ui.photoslist
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -30,28 +33,87 @@ fun PhotosListScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 0.dp, vertical = 8.dp),
     ) {
         when (val s = state) {
-            is PhotosListState.Loading -> CircularProgressIndicator()
-            is PhotosListState.Error -> Text(
-                text = "Error: ${s.throwable.message ?: "Unknown"}",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
-            )
-            is PhotosListState.Empty -> Text(
-                text = "No photos",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            is PhotosListState.RecentPhotos -> Text(
-                text = "Recent photos: ${s.items.size} loaded",
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            is PhotosListState.SearchResults -> Text(
-                text = "Search results: ${s.items.size} loaded",
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            is PhotosListState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            is PhotosListState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ErrorContent(
+                        message = s.throwable.message ?: "Unknown error",
+                        onRetry = { viewModel.dispatch(PhotosListUiActions.Retry) },
+                    )
+                }
+            }
+            is PhotosListState.Empty -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "No photos",
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                }
+            }
+            is PhotosListState.RecentPhotos -> {
+                PhotosGrid(
+                    photos = s.items,
+                    isLoadingMore = s.isLoadingMore,
+                    hasMore = s.hasMore,
+                    onPhotoClick = { photo ->
+                        viewModel.dispatch(PhotosListUiActions.OpenPhoto(photo.id, photo.secret))
+                    },
+                    onLoadMore = { viewModel.dispatch(PhotosListUiActions.LoadNextPage) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+            is PhotosListState.SearchResults -> {
+                PhotosGrid(
+                    photos = s.items,
+                    isLoadingMore = s.isLoadingMore,
+                    hasMore = s.hasMore,
+                    onPhotoClick = { photo ->
+                        viewModel.dispatch(PhotosListUiActions.OpenPhoto(photo.id, photo.secret))
+                    },
+                    onLoadMore = { viewModel.dispatch(PhotosListUiActions.LoadNextPage) },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorContent(
+    message: String,
+    onRetry: () -> Unit,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "Error: $message",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+        )
+        Button(onClick = onRetry) {
+            Text("Retry")
         }
     }
 }

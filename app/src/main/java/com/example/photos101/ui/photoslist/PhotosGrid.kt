@@ -1,0 +1,114 @@
+package com.example.photos101.ui.photoslist
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.example.photos101.domain.model.Photo
+
+private const val GRID_COLUMNS = 3
+private const val LOAD_MORE_THRESHOLD = 5
+
+/**
+ * Builds thumbnail URL from Flickr photo ids when [Photo.thumbnailUrl] is null.
+ */
+fun Photo.thumbnailUrlOrBuilt(): String =
+    thumbnailUrl ?: "https://live.staticflickr.com/$server/${id}_${secret}_s.jpg"
+
+@Composable
+fun PhotosGrid(
+    photos: List<Photo>,
+    isLoadingMore: Boolean,
+    hasMore: Boolean,
+    onPhotoClick: (Photo) -> Unit,
+    onLoadMore: () -> Unit,
+    modifier: Modifier = Modifier,
+    gridState: LazyGridState = rememberLazyGridState(),
+) {
+    Box(modifier = modifier) {
+        LazyVerticalGrid(
+            state = gridState,
+            columns = GridCells.Fixed(GRID_COLUMNS),
+            contentPadding = PaddingValues(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            items(
+                items = photos,
+                key = { it.id },
+            ) { photo ->
+                PhotoGridItem(
+                    photo = photo,
+                    onClick = { onPhotoClick(photo) },
+                    modifier = Modifier
+                        .aspectRatio(1f)
+                        .padding(2.dp),
+                )
+            }
+            if (isLoadingMore) {
+                item(span = { GridItemSpan(GRID_COLUMNS) }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+        }
+
+        // Trigger load more when near the end
+        LaunchedEffect(gridState, hasMore, isLoadingMore) {
+            if (!hasMore || isLoadingMore) return@LaunchedEffect
+            val layoutInfo = gridState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            if (totalItems > 0 && lastVisibleIndex >= totalItems - LOAD_MORE_THRESHOLD) {
+                onLoadMore()
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoGridItem(
+    photo: Photo,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        AsyncImage(
+            model = photo.thumbnailUrlOrBuilt(),
+            contentDescription = photo.title.ifBlank { "Photo ${photo.id}" },
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
