@@ -8,27 +8,27 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class PhotoInfoResponseDto(
-    val stat: String = "ok",
-    val photo: PhotoInfoDto? = null,
-    val code: Int? = null,
-    val message: String? = null,
+    @SerialName("stat") val stat: String = "ok",
+    @SerialName("photo") val photo: PhotoInfoDto? = null,
+    @SerialName("code") val code: Int? = null,
+    @SerialName("message") val message: String? = null,
 )
 
 @Serializable
 data class PhotoInfoDto(
-    val id: String,
-    val secret: String = "",
-    val server: String = "",
-    val owner: PhotoOwnerDto? = null,
-    val title: ContentWrapperDto? = null,
-    val description: ContentWrapperDto? = null,
-    val dates: PhotoDatesDto? = null,
+    @SerialName("id") val id: String,
+    @SerialName("secret") val secret: String = "",
+    @SerialName("server") val server: String = "",
+    @SerialName("owner") val owner: PhotoOwnerDto? = null,
+    @SerialName("title") val title: ContentWrapperDto? = null,
+    @SerialName("description") val description: ContentWrapperDto? = null,
+    @SerialName("dates") val dates: PhotoDatesDto? = null,
 )
 
 @Serializable
 data class PhotoOwnerDto(
-    val nsid: String = "",
-    val username: String = "",
+    @SerialName("nsid") val nsid: String = "",
+    @SerialName("username") val username: String = "",
 )
 
 /** Text content in Flickr JSON uses "_content" key. */
@@ -39,5 +39,5 @@ data class ContentWrapperDto(
 
 @Serializable
 data class PhotoDatesDto(
-    val taken: String? = null,
+    @SerialName("taken") val taken: String? = null,
 )

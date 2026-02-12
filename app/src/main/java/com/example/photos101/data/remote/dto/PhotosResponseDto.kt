@@ -9,28 +9,28 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class PhotosResponseDto(
-    val stat: String = "ok",
-    val photos: PhotosWrapperDto? = null,
-    val code: Int? = null,
-    val message: String? = null,
+    @SerialName("stat") val stat: String = "ok",
+    @SerialName("photos") val photos: PhotosWrapperDto? = null,
+    @SerialName("code") val code: Int? = null,
+    @SerialName("message") val message: String? = null,
 )
 
 @Serializable
 data class PhotosWrapperDto(
-    val page: Int = 1,
-    val pages: Int = 1,
-    val perpage: Int = 0,
+    @SerialName("page") val page: Int = 1,
+    @SerialName("pages") val pages: Int = 1,
+    @SerialName("perpage") val perpage: Int = 0,
     @SerialName("total") val totalRaw: String = "0", // Flickr may return total as string
-    val photo: List<PhotoDto> = emptyList(),
+    @SerialName("photo") val photo: List<PhotoDto> = emptyList(),
 )
 
 @Serializable
 data class PhotoDto(
-    val id: String,
-    val owner: String = "",
-    val secret: String = "",
-    val server: String = "",
-    val title: String = "",
+    @SerialName("id") val id: String,
+    @SerialName("owner") val owner: String = "",
+    @SerialName("secret") val secret: String = "",
+    @SerialName("server") val server: String = "",
+    @SerialName("title") val title: String = "",
     @SerialName("url_s") val urlS: String? = null,
     @SerialName("owner_name") val ownerName: String? = null,
     @SerialName("date_taken") val dateTaken: String? = null,
