@@ -7,6 +7,7 @@ import org.koin.core.module.Module
 import com.example.photos101.di.networkModule
 import com.example.photos101.di.repositoryModule
 import com.example.photos101.di.useCaseModule
+import com.example.photos101.di.viewModelModule
 
 class Photos101Application : Application() {
 
@@ -22,5 +23,6 @@ class Photos101Application : Application() {
         networkModule,
         repositoryModule,
         useCaseModule,
+        viewModelModule,
     )
 }
