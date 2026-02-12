@@ -24,7 +24,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.photos101.R
 import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.photos101.domain.model.PhotoDetail
@@ -47,7 +49,7 @@ fun PhotoDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.back_content_description),
                         )
                     }
                 },
@@ -79,13 +81,16 @@ fun PhotoDetailScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Text(
-                                text = "Error: ${s.throwable.message ?: "Unknown"}",
+                                text = stringResource(
+                                    R.string.error_message,
+                                    s.throwable.message ?: stringResource(R.string.unknown),
+                                ),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error,
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(onClick = { viewModel.loadDetail() }) {
-                                Text("Retry")
+                                Text(stringResource(R.string.retry))
                             }
                         }
                     }
@@ -130,14 +135,14 @@ private fun PhotoDetailContent(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "By ${detail.ownerName}",
+                text = stringResource(R.string.photo_by_owner, detail.ownerName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             detail.dateTaken?.let { date ->
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Taken: $date",
+                    text = stringResource(R.string.photo_taken_date, date),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

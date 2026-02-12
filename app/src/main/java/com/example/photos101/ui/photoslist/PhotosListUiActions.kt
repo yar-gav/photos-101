@@ -10,9 +10,6 @@ sealed class PhotosListUiActions {
     /** User changed the search query (e.g. typed in the search field). */
     data class QueryChanged(val query: String) : PhotosListUiActions()
 
-    /** User submitted search (e.g. pressed search or enter). */
-    data class Search(val query: String) : PhotosListUiActions()
-
     /** Load the next page (infinite scroll). */
     data object LoadNextPage : PhotosListUiActions()
 
@@ -21,9 +18,6 @@ sealed class PhotosListUiActions {
 
     /** User tapped retry after an error. */
     data object Retry : PhotosListUiActions()
-
-    /** User requested refresh (pull-to-refresh or similar). */
-    data object Refresh : PhotosListUiActions()
 
     /** User closed search; clear query and show recent photos immediately. */
     data object ClearSearch : PhotosListUiActions()

@@ -23,7 +23,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.photos101.R
 import coil.compose.AsyncImage
 import com.example.photos101.domain.model.Photo
 
@@ -109,7 +111,7 @@ private fun PhotoGridItem(
     ) {
         AsyncImage(
             model = photo.thumbnailUrlOrBuilt(),
-            contentDescription = photo.title.ifBlank { "Photo ${photo.id}" },
+            contentDescription = photo.title.ifBlank { stringResource(R.string.photo_content_description, photo.id) },
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )

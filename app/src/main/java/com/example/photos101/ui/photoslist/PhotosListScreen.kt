@@ -29,8 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.photos101.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,12 +51,6 @@ fun PhotosListScreen(
         }
     }
 
-    LaunchedEffect(viewModel.events) {
-        viewModel.events.collect { _ ->
-            // Navigation handled in MainActivity
-        }
-    }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -67,11 +63,11 @@ fun PhotosListScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .focusRequester(searchFocusRequester),
-                            placeholder = { Text("Search photos...") },
+                            placeholder = { Text(stringResource(R.string.search_placeholder)) },
                             singleLine = true,
                         )
                     } else {
-                        Text("Photos")
+                        Text(stringResource(R.string.photos_title))
                     }
                 },
                 actions = {
@@ -80,11 +76,11 @@ fun PhotosListScreen(
                             isSearchExpanded = false
                             viewModel.dispatch(PhotosListUiActions.ClearSearch)
                         }) {
-                            Icon(Icons.Default.Close, contentDescription = "Close search")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close_search_content_description))
                         }
                     } else {
                         IconButton(onClick = { isSearchExpanded = true }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_content_description))
                         }
                     }
                 },
@@ -95,7 +91,7 @@ fun PhotosListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 0.dp, vertical = 8.dp),
+                .padding(vertical = 8.dp),
         ) {
         when (val s = state) {
             is PhotosListState.Loading -> {
@@ -114,7 +110,7 @@ fun PhotosListScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     ErrorContent(
-                        message = s.throwable.message ?: "Unknown error",
+                        message = s.throwable.message ?: stringResource(R.string.unknown_error),
                         onRetry = { viewModel.dispatch(PhotosListUiActions.Retry) },
                     )
                 }
@@ -127,7 +123,7 @@ fun PhotosListScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "No photos",
+                        text = stringResource(R.string.no_photos),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
@@ -171,12 +167,12 @@ private fun ErrorContent(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
-            text = "Error: $message",
+            text = stringResource(R.string.error_message, message),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.error,
         )
         Button(onClick = onRetry) {
-            Text("Retry")
+            Text(stringResource(R.string.retry))
         }
     }
 }

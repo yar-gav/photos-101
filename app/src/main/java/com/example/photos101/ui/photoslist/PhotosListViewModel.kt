@@ -45,16 +45,11 @@ class PhotosListViewModel(
                     _searchInput.value = intent.query
                     debouncedSearch(intent.query)
                 }
-                is PhotosListUiActions.Search -> {
-                    _searchInput.value = intent.query
-                    loadSearchPage(1, intent.query, replace = true)
-                }
                 is PhotosListUiActions.LoadNextPage -> loadNextPage()
                 is PhotosListUiActions.OpenPhoto -> _events.emit(
                     PhotosListEvent.NavigateToDetail(intent.photoId, intent.secret)
                 )
                 is PhotosListUiActions.Retry -> loadInitial()
-                is PhotosListUiActions.Refresh -> loadInitial()
                 is PhotosListUiActions.ClearSearch -> {
                     searchDebounceJob?.cancel()
                     _searchInput.value = ""

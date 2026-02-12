@@ -1,3 +1,20 @@
 <resources>
     <string name="app_name">Photos101</string>
+
+    <!-- Photos list -->
+    <string name="photos_title">Photos</string>
+    <string name="search_placeholder">Search photos…</string>
+    <string name="search_content_description">Search</string>
+    <string name="close_search_content_description">Close search</string>
+    <string name="no_photos">No photos</string>
+    <string name="error_message">Error: %1$s</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="retry">Retry</string>
+    <string name="photo_content_description">Photo %1$s</string>
+
+    <!-- Photo detail -->
+    <string name="back_content_description">Back</string>
+    <string name="unknown">Unknown</string>
+    <string name="photo_by_owner">By %1$s</string>
+    <string name="photo_taken_date">Taken: %1$s</string>
 </resources>
