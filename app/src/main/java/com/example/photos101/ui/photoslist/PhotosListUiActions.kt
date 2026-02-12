@@ -24,4 +24,7 @@ sealed class PhotosListUiActions {
 
     /** User requested refresh (pull-to-refresh or similar). */
     data object Refresh : PhotosListUiActions()
+
+    /** User closed search; clear query and show recent photos immediately. */
+    data object ClearSearch : PhotosListUiActions()
 }

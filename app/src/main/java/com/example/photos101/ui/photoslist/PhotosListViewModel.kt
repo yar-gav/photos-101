@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.photos101.domain.usecase.GetRecentPhotosUseCase
 import com.example.photos101.domain.usecase.SearchPhotosUseCase
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,6 +31,8 @@ class PhotosListViewModel(
     private val _events = MutableSharedFlow<PhotosListEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<PhotosListEvent> = _events.asSharedFlow()
 
+    private var searchDebounceJob: Job? = null
+
     init {
         dispatch(PhotosListUiActions.LoadInitial)
     }
@@ -37,7 +41,10 @@ class PhotosListViewModel(
         viewModelScope.launch {
             when (intent) {
                 is PhotosListUiActions.LoadInitial -> loadInitial()
-                is PhotosListUiActions.QueryChanged -> _searchInput.value = intent.query
+                is PhotosListUiActions.QueryChanged -> {
+                    _searchInput.value = intent.query
+                    debouncedSearch(intent.query)
+                }
                 is PhotosListUiActions.Search -> {
                     _searchInput.value = intent.query
                     loadSearchPage(1, intent.query, replace = true)
@@ -48,6 +55,23 @@ class PhotosListViewModel(
                 )
                 is PhotosListUiActions.Retry -> loadInitial()
                 is PhotosListUiActions.Refresh -> loadInitial()
+                is PhotosListUiActions.ClearSearch -> {
+                    searchDebounceJob?.cancel()
+                    _searchInput.value = ""
+                    loadRecentPage(1, replace = true)
+                }
+            }
+        }
+    }
+
+    private fun debouncedSearch(query: String) {
+        searchDebounceJob?.cancel()
+        searchDebounceJob = viewModelScope.launch {
+            delay(DEBOUNCE_MS)
+            if (query.isBlank()) {
+                loadRecentPage(1, replace = true)
+            } else {
+                loadSearchPage(1, query, replace = true)
             }
         }
     }
@@ -80,7 +104,7 @@ class PhotosListViewModel(
         getRecentPhotosUseCase(page = page, perPage = PAGE_SIZE)
             .onSuccess { result ->
                 val current = _state.value as? PhotosListState.RecentPhotos
-                val newItems = if (replace) result.items else (current?.items.orEmpty() + result.items)
+                val newItems = if (replace) result.items else (current?.items.orEmpty() + result.items).distinctBy { it.id }
                 _state.value = when {
                     newItems.isEmpty() -> PhotosListState.Empty(null)
                     else -> PhotosListState.RecentPhotos(
@@ -116,7 +140,7 @@ class PhotosListViewModel(
                 when (val current = _state.value) {
                     is PhotosListState.SearchResults -> if (!replace && current.query == query && current.isLoadingMore) {
                         _state.value = current.copy(
-                            items = current.items + result.items,
+                            items = (current.items + result.items).distinctBy { it.id },
                             currentPage = result.page,
                             totalPages = result.totalPages,
                             isLoadingMore = false,
@@ -157,6 +181,7 @@ class PhotosListViewModel(
 
     companion object {
         private const val PAGE_SIZE = 30
+        private const val DEBOUNCE_MS = 400L
     }
 }
 
