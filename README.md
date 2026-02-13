@@ -21,7 +21,6 @@ An Android app for browsing recent photos and searching the Flickr public photo 
 ## Setup
 
 ### 1. Get a Flickr API key
-
 1. Go to [Flickr App Garden](https://www.flickr.com/services/apps/create/).
 2. Sign in and create an app (e.g. “Non-Commercial”).
 3. Copy the **Key** value.
@@ -77,3 +76,15 @@ The app reads the Flickr API key from the project’s `local.properties` file (w
 This project is for demonstration purposes. Use of the Flickr API is subject to [Flickr’s API Terms](https://www.flickr.com/services/api/tos/).
 
 <a href="https://www.flaticon.com/free-icons/picture" title="picture icons">Picture icons created by Hasymi - Flaticon</a>
+
+
+## Videos from app
+https://github.com/user-attachments/assets/0d0cb026-49bb-4234-b24c-e64b11b0d8bf
+
+https://github.com/user-attachments/assets/e10b3d9f-bd75-44af-b8f5-d18e4ab38544
+
+https://github.com/user-attachments/assets/6568c405-3531-42b7-9b1a-d8f75cde0428
+
+https://github.com/user-attachments/assets/8230f490-43f6-46d5-8005-ed92170e3173
+
+
