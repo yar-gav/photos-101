@@ -43,10 +43,11 @@ fun PhotosListScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val searchInput by viewModel.searchInput.collectAsStateWithLifecycle()
-    var isSearchExpanded by remember { mutableStateOf(false) }
+    var userExpandedSearch by remember { mutableStateOf(false) }
+    val isSearchExpanded = searchInput.isNotBlank() || userExpandedSearch
     val searchFocusRequester = remember { FocusRequester() }
 
-    LaunchedEffect(isSearchExpanded) {
+    LaunchedEffect(isSearchExpanded && searchInput.isEmpty()) {
         if (isSearchExpanded) {
             searchFocusRequester.requestFocus()
         }
@@ -79,13 +80,13 @@ fun PhotosListScreen(
                     }
                     if (isSearchExpanded) {
                         IconButton(onClick = {
-                            isSearchExpanded = false
+                            userExpandedSearch = false
                             viewModel.dispatch(PhotosListUiActions.ClearSearch)
                         }) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close_search_content_description))
                         }
                     } else {
-                        IconButton(onClick = { isSearchExpanded = true }) {
+                        IconButton(onClick = { userExpandedSearch = true }) {
                             Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_content_description))
                         }
                     }

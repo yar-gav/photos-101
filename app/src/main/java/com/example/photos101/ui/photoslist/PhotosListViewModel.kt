@@ -44,7 +44,13 @@ class PhotosListViewModel(
     private var searchDebounceJob: Job? = null
 
     init {
-        dispatch(PhotosListUiActions.LoadInitial)
+        viewModelScope.launch {
+            val saved = activeSearchPollStateDataSource.getActiveSearchPollState()
+            if (!saved?.activeSearchQuery.isNullOrBlank()) {
+                _searchInput.value = saved.activeSearchQuery
+            }
+            dispatch(PhotosListUiActions.LoadInitial)
+        }
     }
 
     private fun cancelPolling() {
@@ -243,7 +249,6 @@ class PhotosListViewModel(
     companion object {
         private const val PAGE_SIZE = 30
         private const val DEBOUNCE_MS = 400L
-        /** WorkManager enforces a minimum of 15 minutes for periodic work; shorter values are clamped. */
         private const val POLL_INTERVAL_MINUTES = 15L
         const val WORK_NAME = "photos_poll"
     }
