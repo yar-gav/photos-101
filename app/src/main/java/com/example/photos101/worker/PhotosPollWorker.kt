@@ -60,7 +60,7 @@ class PhotosPollWorker(
                 Log.d(LOG_TAG, "doWork: fetched ${newIds.size} ids, ${addedIds.size} new since last run")
                 if (addedIds.isNotEmpty()) {
                     ensureNotificationChannel()
-                    showNotification(applicationContext, addedIds.size)
+                    showNotification(applicationContext, addedIds.size, state.activeSearchQuery)
                 }
                 activeSearchPollStateDataSource.savePollState(state.activeSearchQuery, newIds)
                 Result.success()
@@ -84,9 +84,9 @@ class PhotosPollWorker(
         }
     }
 
-    private fun showNotification(context: Context, newCount: Int) {
+    private fun showNotification(context: Context, newCount: Int, searchQuery: String) {
         val title = context.getString(R.string.notification_new_photos_title)
-        val text = context.getString(R.string.notification_new_photos_search, newCount)
+        val text = context.getString(R.string.notification_new_photos_search, newCount, searchQuery)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
         }

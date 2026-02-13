@@ -23,5 +23,5 @@
     <string name="notification_channel_photos_description">Notifications when new photos match your recent or search.</string>
     <string name="notification_new_photos_title">New photos</string>
     <string name="notification_new_photos_recent">%d new recent photos</string>
-    <string name="notification_new_photos_search">%d new photos in your search</string>
+    <string name="notification_new_photos_search">%d new photos in your search: %s</string>
 </resources>
