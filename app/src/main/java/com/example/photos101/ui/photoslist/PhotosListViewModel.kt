@@ -2,6 +2,12 @@ package com.example.photos101.ui.photoslist
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.example.photos101.worker.PhotosPollWorker
+import com.example.photos101.data.local.ActiveSearchPollStateDataSource
 import com.example.photos101.domain.usecase.GetRecentPhotosUseCase
 import com.example.photos101.domain.usecase.SearchPhotosUseCase
 import kotlinx.coroutines.Job
@@ -13,13 +19,17 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 /**
  * MVI ViewModel for the photos list screen (recent + search with paging).
+ * Schedules background polling (15 min) only when there is an active search; cancels when search is cleared.
  */
 class PhotosListViewModel(
     private val getRecentPhotosUseCase: GetRecentPhotosUseCase,
     private val searchPhotosUseCase: SearchPhotosUseCase,
+    private val activeSearchPollStateDataSource: ActiveSearchPollStateDataSource,
+    private val workManager: WorkManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<PhotosListState>(PhotosListState.Loading(null))
@@ -37,6 +47,24 @@ class PhotosListViewModel(
         dispatch(PhotosListUiActions.LoadInitial)
     }
 
+    private fun cancelPolling() {
+        workManager.cancelUniqueWork(WORK_NAME)
+        viewModelScope.launch {
+            activeSearchPollStateDataSource.clearPollState()
+        }
+    }
+
+    /**
+     * Enqueues the poll worker once with no delay. Use for testing: run this while you have
+     * an active search, then check Logcat for "PhotosPollWorker" or wait for a notification.
+     */
+    fun runPollWorkerOnceForTesting() {
+        val request = OneTimeWorkRequestBuilder<PhotosPollWorker>()
+            .setInitialDelay(0, TimeUnit.SECONDS)
+            .build()
+        workManager.enqueue(request)
+    }
+
     fun dispatch(intent: PhotosListUiActions) {
         viewModelScope.launch {
             when (intent) {
@@ -52,6 +80,7 @@ class PhotosListViewModel(
                 is PhotosListUiActions.Retry -> loadInitial()
                 is PhotosListUiActions.ClearSearch -> {
                     searchDebounceJob?.cancel()
+                    cancelPolling()
                     _searchInput.value = ""
                     loadRecentPage(1, replace = true)
                 }
@@ -91,8 +120,9 @@ class PhotosListViewModel(
     }
 
     private suspend fun loadRecentPage(page: Int, replace: Boolean) {
-        if (replace) _state.value = PhotosListState.Loading(null)
-        else {
+        if (replace) {
+            _state.value = PhotosListState.Loading(null)
+        } else {
             val current = _state.value as? PhotosListState.RecentPhotos
             if (current != null) _state.value = current.copy(isLoadingMore = true)
         }
@@ -100,7 +130,7 @@ class PhotosListViewModel(
             .onSuccess { result ->
                 val current = _state.value as? PhotosListState.RecentPhotos
                 val newItems = if (replace) result.items else (current?.items.orEmpty() + result.items).distinctBy { it.id }
-                _state.value = when {
+                val newState = when {
                     newItems.isEmpty() -> PhotosListState.Empty(null)
                     else -> PhotosListState.RecentPhotos(
                         items = newItems,
@@ -109,21 +139,41 @@ class PhotosListViewModel(
                         isLoadingMore = false,
                     )
                 }
+                _state.value = newState
             }
             .onFailure { t ->
                 val current = _state.value as? PhotosListState.RecentPhotos
                 if (replace || current == null) {
                     _state.value = PhotosListState.Error(t, null)
                 } else {
-                    // Keep list, clear loading-more flag so user can retry scroll
                     _state.value = current.copy(isLoadingMore = false)
                 }
             }
     }
 
+    private fun persistAndSchedulePolling(firstPageIds: List<String>, query: String) {
+        viewModelScope.launch {
+            activeSearchPollStateDataSource.savePollState(query, firstPageIds)
+            // Use repeat + flex so the run window is the full period; first run can happen soon (within 0–15 min).
+            // Without flex, some devices defer the first run to the end of the period.
+            val request = PeriodicWorkRequestBuilder<PhotosPollWorker>(
+                POLL_INTERVAL_MINUTES, TimeUnit.MINUTES
+            )
+                .setInitialDelay(0, TimeUnit.SECONDS)
+                .build()
+            workManager.enqueueUniquePeriodicWork(
+                WORK_NAME,
+                ExistingPeriodicWorkPolicy.REPLACE,
+                request,
+            )
+        }
+    }
+
     private suspend fun loadSearchPage(page: Int, query: String, replace: Boolean) {
         if (query.isBlank()) return
-        if (replace) _state.value = PhotosListState.Loading(query)
+        if (replace) {
+            _state.value = PhotosListState.Loading(query)
+        }
         else {
             val current = _state.value as? PhotosListState.SearchResults
             if (current != null && current.query == query) {
@@ -141,7 +191,7 @@ class PhotosListViewModel(
                             isLoadingMore = false,
                         )
                     } else {
-                        _state.value = when {
+                        val newState = when {
                             result.items.isEmpty() -> PhotosListState.Empty(query)
                             else -> PhotosListState.SearchResults(
                                 query = query,
@@ -151,16 +201,32 @@ class PhotosListViewModel(
                                 isLoadingMore = false,
                             )
                         }
+                        _state.value = newState
+                        if (newState is PhotosListState.SearchResults) {
+                            persistAndSchedulePolling(
+                                newState.items.take(PAGE_SIZE).map { it.id },
+                                newState.query,
+                            )
+                        }
                     }
-                    else -> _state.value = when {
-                        result.items.isEmpty() -> PhotosListState.Empty(query)
-                        else -> PhotosListState.SearchResults(
-                            query = query,
-                            items = result.items,
-                            currentPage = result.page,
-                            totalPages = result.totalPages,
-                            isLoadingMore = false,
-                        )
+                    else -> {
+                        val newState = when {
+                            result.items.isEmpty() -> PhotosListState.Empty(query)
+                            else -> PhotosListState.SearchResults(
+                                query = query,
+                                items = result.items,
+                                currentPage = result.page,
+                                totalPages = result.totalPages,
+                                isLoadingMore = false,
+                            )
+                        }
+                        _state.value = newState
+                        if (newState is PhotosListState.SearchResults) {
+                            persistAndSchedulePolling(
+                                newState.items.take(PAGE_SIZE).map { it.id },
+                                newState.query,
+                            )
+                        }
                     }
                 }
             }
@@ -177,6 +243,8 @@ class PhotosListViewModel(
     companion object {
         private const val PAGE_SIZE = 30
         private const val DEBOUNCE_MS = 400L
+        private const val POLL_INTERVAL_MINUTES = 1L
+        const val WORK_NAME = "photos_poll"
     }
 }
 

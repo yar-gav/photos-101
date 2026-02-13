@@ -75,6 +75,8 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.koin.androidx.workmanager)
 
     testImplementation(libs.junit)
     testImplementation(libs.turbine)

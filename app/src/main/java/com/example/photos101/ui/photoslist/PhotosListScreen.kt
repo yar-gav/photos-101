@@ -17,6 +17,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -71,6 +72,11 @@ fun PhotosListScreen(
                     }
                 },
                 actions = {
+                    if (state is PhotosListState.SearchResults) {
+                        TextButton(onClick = { viewModel.runPollWorkerOnceForTesting() }) {
+                            Text("Test poll")
+                        }
+                    }
                     if (isSearchExpanded) {
                         IconButton(onClick = {
                             isSearchExpanded = false
