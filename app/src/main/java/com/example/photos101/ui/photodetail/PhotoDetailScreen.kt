@@ -25,82 +25,128 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.photos101.R
-import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.example.photos101.R
 import com.example.photos101.domain.model.PhotoDetail
+import com.example.photos101.ui.theme.Photos101Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoDetailScreen(
     onBack: () -> Unit,
-    viewModel: PhotoDetailViewModel,
+    viewModel: PhotoDetailViewModel? = null,
+    previewState: PhotoDetailState? = null,
     modifier: Modifier = Modifier,
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+    if (viewModel != null) {
+        val state by viewModel.state.collectAsStateWithLifecycle()
+        PhotoDetailScaffold(
+            state = state,
+            onBack = onBack,
+            onRetry = { viewModel.loadDetail() },
+            modifier = modifier,
+        )
+    } else {
+        val state = previewState ?: PhotoDetailState.Loading
+        PhotoDetailScaffold(
+            state = state,
+            onBack = onBack,
+            onRetry = {},
+            modifier = modifier,
+        )
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PhotoDetailScaffold(
+    state: PhotoDetailState,
+    onBack: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back_content_description),
-                        )
-                    }
-                },
-            )
-        },
+        topBar = { PhotoDetailTopBar(onBack = onBack) },
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
         ) {
-            when (val s = state) {
-                is PhotoDetailState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is PhotoDetailState.Error -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                text = stringResource(
-                                    R.string.error_message,
-                                    s.throwable.message ?: stringResource(R.string.unknown),
-                                ),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadDetail() }) {
-                                Text(stringResource(R.string.retry))
-                            }
-                        }
-                    }
-                }
-                is PhotoDetailState.Success -> {
-                    PhotoDetailContent(
-                        detail = s.detail,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+            PhotoDetailContentByState(state = state, onRetry = onRetry)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PhotoDetailTopBar(onBack: () -> Unit) {
+    TopAppBar(
+        title = { },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back_content_description),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun PhotoDetailContentByState(
+    state: PhotoDetailState,
+    onRetry: () -> Unit,
+) {
+    when (val s = state) {
+        is PhotoDetailState.Loading -> PhotoDetailLoading()
+        is PhotoDetailState.Error -> PhotoDetailError(
+            message = s.throwable.message ?: stringResource(R.string.unknown),
+            onRetry = onRetry,
+        )
+        is PhotoDetailState.Success -> PhotoDetailContent(
+            detail = s.detail,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Composable
+private fun PhotoDetailLoading(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
+private fun PhotoDetailError(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = stringResource(R.string.error_message, message),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(onClick = onRetry) {
+                Text(stringResource(R.string.retry))
             }
         }
     }
@@ -112,15 +158,12 @@ private fun PhotoDetailContent(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        // Full-screen image
         AsyncImage(
             model = detail.largeImageUrl,
             contentDescription = detail.title,
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize(),
         )
-
-        // Bottom overlay with title, owner, date taken
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -148,5 +191,51 @@ private fun PhotoDetailContent(
                 )
             }
         }
+    }
+}
+
+// --- Previews ---
+
+@Preview(name = "Loading")
+@Composable
+private fun PhotoDetailScreenPreviewLoading() {
+    Photos101Theme {
+        PhotoDetailScreen(
+            onBack = {},
+            viewModel = null,
+            previewState = PhotoDetailState.Loading,
+        )
+    }
+}
+
+@Preview(name = "Error")
+@Composable
+private fun PhotoDetailScreenPreviewError() {
+    Photos101Theme {
+        PhotoDetailScreen(
+            onBack = {},
+            viewModel = null,
+            previewState = PhotoDetailState.Error(Throwable("Failed to load")),
+        )
+    }
+}
+
+private val previewDetail = PhotoDetail(
+    id = "1",
+    title = "Sample Photo",
+    ownerName = "photographer",
+    dateTaken = "2024-01-15",
+    largeImageUrl = null,
+)
+
+@Preview(name = "Success")
+@Composable
+private fun PhotoDetailScreenPreviewSuccess() {
+    Photos101Theme {
+        PhotoDetailScreen(
+            onBack = {},
+            viewModel = null,
+            previewState = PhotoDetailState.Success(previewDetail),
+        )
     }
 }

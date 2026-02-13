@@ -24,10 +24,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.photos101.R
 import coil.compose.AsyncImage
 import com.example.photos101.domain.model.Photo
+import com.example.photos101.ui.theme.Photos101Theme
 
 private const val GRID_COLUMNS = 3
 private const val LOAD_MORE_THRESHOLD = 5
@@ -71,14 +73,7 @@ fun PhotosGrid(
             }
             if (isLoadingMore) {
                 item(span = { GridItemSpan(GRID_COLUMNS) }) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator()
-                    }
+                    GridLoadingFooter()
                 }
             }
         }
@@ -99,6 +94,18 @@ fun PhotosGrid(
 }
 
 @Composable
+private fun GridLoadingFooter(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator()
+    }
+}
+
+@Composable
 private fun PhotoGridItem(
     photo: Photo,
     onClick: () -> Unit,
@@ -114,6 +121,40 @@ private fun PhotoGridItem(
             contentDescription = photo.title.ifBlank { stringResource(R.string.photo_content_description, photo.id) },
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+private val gridPreviewPhotos = listOf(
+    Photo("1", "Photo 1", "u1", null, null, "s1", "srv1"),
+    Photo("2", "Photo 2", "u2", null, null, "s2", "srv2"),
+    Photo("3", "Photo 3", "u3", null, null, "s3", "srv3"),
+)
+
+@Preview(name = "Grid")
+@Composable
+private fun PhotosGridPreview() {
+    Photos101Theme {
+        PhotosGrid(
+            photos = gridPreviewPhotos,
+            isLoadingMore = false,
+            hasMore = false,
+            onPhotoClick = {},
+            onLoadMore = {},
+        )
+    }
+}
+
+@Preview(name = "Grid loading more")
+@Composable
+private fun PhotosGridLoadingMorePreview() {
+    Photos101Theme {
+        PhotosGrid(
+            photos = gridPreviewPhotos,
+            isLoadingMore = true,
+            hasMore = true,
+            onPhotoClick = {},
+            onLoadMore = {},
         )
     }
 }
