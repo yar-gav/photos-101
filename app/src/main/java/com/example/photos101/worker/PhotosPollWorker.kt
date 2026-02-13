@@ -18,10 +18,6 @@ import com.example.photos101.domain.repository.PhotoRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private const val CHANNEL_ID = "photos_poll"
-private const val NOTIFICATION_ID = 1
-private const val LOG_TAG = "PhotosPollWorker"
-
 /**
  * Background worker that runs every 15 minutes only when there is an active search:
  * fetches first page for the persisted search query, compares with persisted result,
@@ -109,5 +105,9 @@ class PhotosPollWorker(
 
     companion object {
         private const val FIRST_PAGE_SIZE = 30
+        private const val LOG_TAG = "PhotosPollWorker"
+        private const val CHANNEL_ID = "photos_poll"
+        private const val NOTIFICATION_ID = 1
+
     }
 }

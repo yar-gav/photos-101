@@ -9,5 +9,4 @@ data class PhotoDetail(
     val ownerName: String,
     val dateTaken: String?,
     val largeImageUrl: String?,
-    val description: String?,
 )

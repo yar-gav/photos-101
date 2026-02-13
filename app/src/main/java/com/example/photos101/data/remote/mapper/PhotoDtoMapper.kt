@@ -2,7 +2,6 @@ package com.example.photos101.data.remote.mapper
 
 import com.example.photos101.data.remote.dto.PhotoDto
 import com.example.photos101.data.remote.dto.PhotoInfoDto
-import com.example.photos101.domain.model.PagedResult
 import com.example.photos101.domain.model.Photo
 import com.example.photos101.domain.model.PhotoDetail
 
@@ -26,10 +25,6 @@ fun PhotoInfoDto.toDetailDomain(): PhotoDetail {
         title = titleText,
         ownerName = ownerDisplay,
         dateTaken = dates?.taken,
-        largeImageUrl = largeUrl,
-        description = description?.content?.takeIf { it.isNotBlank() },
+        largeImageUrl = largeUrl
     )
 }
-
-/** Parse Flickr's total (may be string) to Int. */
-fun parseTotal(totalRaw: String): Int = totalRaw.toIntOrNull() ?: 0

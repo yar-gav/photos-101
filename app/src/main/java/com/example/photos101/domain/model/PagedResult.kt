@@ -7,7 +7,5 @@ data class PagedResult<T>(
     val items: List<T>,
     val page: Int,
     val totalPages: Int,
-    val totalCount: Int,
-) {
-    val hasMore: Boolean get() = page < totalPages
-}
+    val totalCount: Int
+)
