@@ -1,0 +1,5 @@
+# Copy this file to local.properties and fill in your Flickr API key.
+# Get an API key at: https://www.flickr.com/services/apps/create/
+
+sdk.dir=/path/to/your/Android/sdk
+FLICKR_API_KEY=your_flickr_api_key_here

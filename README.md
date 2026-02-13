@@ -75,4 +75,5 @@ The app reads the Flickr API key from the project’s `local.properties` file (w
 ## License
 
 This project is for demonstration purposes. Use of the Flickr API is subject to [Flickr’s API Terms](https://www.flickr.com/services/api/tos/).
+
 <a href="https://www.flaticon.com/free-icons/picture" title="picture icons">Picture icons created by Hasymi - Flaticon</a>
