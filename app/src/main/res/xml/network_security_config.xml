@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Trust both system and user CAs. This fixes:
+  - SSLHandshakeException "Trust anchor for certification path not found" when using
+    a proxy (e.g. Charles, Fiddler) to inspect HTTPS, or on some emulators with
+    limited CA stores.
+  - api.flickr.com and other HTTPS endpoints continue to use system CAs.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
