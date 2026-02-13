@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.example.photos101.domain.model.Photo
+import com.example.photos101.domain.model.PagedResult
 import com.example.photos101.worker.PhotosPollWorker
 import com.example.photos101.data.local.ActiveSearchPollStateDataSource
 import com.example.photos101.domain.usecase.GetRecentPhotosUseCase
@@ -17,11 +19,15 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 /**
  * MVI ViewModel for the photos list screen (recent + search with paging).
+ * Uses a single "photos list" state: [PhotosListState.Photos] with [query] null for recent, non-null for search.
  * Schedules background polling (15 min) only when there is an active search; cancels when search is cleared.
  */
 class PhotosListViewModel(
@@ -44,19 +50,9 @@ class PhotosListViewModel(
 
     init {
         viewModelScope.launch {
-            val saved = activeSearchPollStateDataSource.getActiveSearchPollState()
-            if (!saved?.activeSearchQuery.isNullOrBlank()) {
-                _searchInput.value = saved.activeSearchQuery
-            }
-            dispatch(PhotosListUiActions.LoadInitial)
+            restoreSavedSearchAndLoadInitial()
         }
-    }
-
-    private fun cancelPolling() {
-        workManager.cancelUniqueWork(WORK_NAME)
-        viewModelScope.launch {
-            activeSearchPollStateDataSource.clearPollState()
-        }
+        startPollStateStaleCheck()
     }
 
     fun dispatch(intent: PhotosListUiActions) {
@@ -68,17 +64,65 @@ class PhotosListViewModel(
                     debouncedSearch(intent.query)
                 }
                 is PhotosListUiActions.LoadNextPage -> loadNextPage()
-                is PhotosListUiActions.OpenPhoto -> _events.emit(
-                    PhotosListEvent.NavigateToDetail(intent.photoId, intent.secret)
-                )
+                is PhotosListUiActions.OpenPhoto ->
+                    _events.emit(PhotosListEvent.NavigateToDetail(intent.photoId, intent.secret))
                 is PhotosListUiActions.Retry -> loadInitial()
-                is PhotosListUiActions.ClearSearch -> {
-                    searchDebounceJob?.cancel()
-                    cancelPolling()
-                    _searchInput.value = ""
-                    loadRecentPage(1, replace = true)
+                is PhotosListUiActions.ClearSearch -> clearSearchAndLoadRecent()
+            }
+        }
+    }
+
+    // --- Initialization & polling ---
+
+    private suspend fun restoreSavedSearchAndLoadInitial() {
+        val saved = activeSearchPollStateDataSource.getActiveSearchPollState()
+        if (!saved?.activeSearchQuery.isNullOrBlank()) {
+            _searchInput.value = saved.activeSearchQuery
+        }
+        loadInitial()
+    }
+
+    private fun startPollStateStaleCheck() {
+        activeSearchPollStateDataSource.activeSearchPollState
+            .distinctUntilChanged()
+            .onEach { pollState ->
+                if (pollState == null || pollState.activeSearchQuery.isBlank()) return@onEach
+                val current = _state.value
+                if (current is PhotosListState.Photos && current.query == pollState.activeSearchQuery) {
+                    val ourFirstPageIds = current.items.take(PAGE_SIZE).map { it.id }
+                    if (ourFirstPageIds != pollState.firstPagePhotoIds) {
+                        loadInitial()
+                    }
                 }
             }
+            .launchIn(viewModelScope)
+    }
+
+    private fun cancelPolling() {
+        workManager.cancelUniqueWork(WORK_NAME)
+        viewModelScope.launch {
+            activeSearchPollStateDataSource.clearPollState()
+        }
+    }
+
+    private fun clearSearchAndLoadRecent() {
+        searchDebounceJob?.cancel()
+        cancelPolling()
+        _searchInput.value = ""
+        viewModelScope.launch { loadPage(1, query = null, replace = true) }
+    }
+
+    // --- Load triggers ---
+
+    private suspend fun loadInitial() {
+        val query = _searchInput.value.ifBlank { null }
+        loadPage(1, query, replace = true)
+    }
+
+    private suspend fun loadNextPage() {
+        val current = _state.value as? PhotosListState.Photos ?: return
+        if (!current.isLoadingMore && current.hasMore) {
+            loadPage(current.currentPage + 1, current.query, replace = false)
         }
     }
 
@@ -86,148 +130,92 @@ class PhotosListViewModel(
         searchDebounceJob?.cancel()
         searchDebounceJob = viewModelScope.launch {
             delay(DEBOUNCE_MS)
-            if (query.isBlank()) {
-                loadRecentPage(1, replace = true)
-            } else {
-                loadSearchPage(1, query, replace = true)
-            }
+            loadPage(1, query.ifBlank { null }, replace = true)
         }
     }
 
-    private suspend fun loadInitial() {
-        val query = _searchInput.value
-        if (query.isBlank()) {
-            loadRecentPage(1, replace = true)
+    // --- Single load path (recent = query null, search = query non-null) ---
+
+    private suspend fun loadPage(page: Int, query: String?, replace: Boolean) {
+        setLoadingState(query, replace)
+        val result = if (query.isNullOrBlank()) {
+            getRecentPhotosUseCase(page = page, perPage = PAGE_SIZE)
         } else {
-            loadSearchPage(1, query, replace = true)
+            searchPhotosUseCase(query = query, page = page, perPage = PAGE_SIZE)
         }
+        result
+            .onSuccess { applySuccess(it, query, replace) }
+            .onFailure { applyFailure(it, query, replace) }
     }
 
-    private suspend fun loadNextPage() {
-        when (val s = _state.value) {
-            is PhotosListState.RecentPhotos ->
-                if (!s.isLoadingMore && s.hasMore) loadRecentPage(s.currentPage + 1, replace = false)
-            is PhotosListState.SearchResults ->
-                if (!s.isLoadingMore && s.hasMore) loadSearchPage(s.currentPage + 1, s.query, replace = false)
-            else -> { /* no-op */ }
-        }
-    }
-
-    private suspend fun loadRecentPage(page: Int, replace: Boolean) {
+    private fun setLoadingState(query: String?, replace: Boolean) {
         if (replace) {
-            _state.value = PhotosListState.Loading(null)
+            _state.value = PhotosListState.Loading(query)
         } else {
-            val current = _state.value as? PhotosListState.RecentPhotos
-            if (current != null) _state.value = current.copy(isLoadingMore = true)
+            val current = _state.value as? PhotosListState.Photos
+            if (current is PhotosListState.Photos && current.query == query) {
+                _state.value = current.copy(isLoadingMore = true)
+            }
         }
-        getRecentPhotosUseCase(page = page, perPage = PAGE_SIZE)
-            .onSuccess { result ->
-                val current = _state.value as? PhotosListState.RecentPhotos
-                val newItems = if (replace) result.items else (current?.items.orEmpty() + result.items).distinctBy { it.id }
-                val newState = when {
-                    newItems.isEmpty() -> PhotosListState.Empty(null)
-                    else -> PhotosListState.RecentPhotos(
-                        items = newItems,
-                        currentPage = result.page,
-                        totalPages = result.totalPages,
-                        isLoadingMore = false,
-                    )
-                }
-                _state.value = newState
-            }
-            .onFailure { t ->
-                val current = _state.value as? PhotosListState.RecentPhotos
-                if (replace || current == null) {
-                    _state.value = PhotosListState.Error(t, null)
-                } else {
-                    _state.value = current.copy(isLoadingMore = false)
-                }
-            }
     }
+
+    private fun applySuccess(result: PagedResult<Photo>, query: String?, replace: Boolean) {
+        val current = _state.value as? PhotosListState.Photos
+        val isAppend = !replace && current != null && current.query == query && current.isLoadingMore
+        val newItems = if (isAppend) {
+            (current.items + result.items).distinctBy { it.id }
+        } else {
+            result.items
+        }
+        _state.value = stateFromItems(newItems, result.page, result.totalPages, query)
+        if (!query.isNullOrEmpty() && !isAppend) {
+            val newState = _state.value as? PhotosListState.Photos
+            if (newState != null) {
+                persistAndSchedulePolling(
+                    newState.items.take(PAGE_SIZE).map { it.id },
+                    query,
+                )
+            }
+        }
+    }
+
+    private fun applyFailure(throwable: Throwable, query: String?, replace: Boolean) {
+        val current = _state.value as? PhotosListState.Photos
+        _state.value = when {
+            replace || current == null || current.query != query ->
+                PhotosListState.Error(throwable, query)
+            else ->
+                current.copy(isLoadingMore = false)
+        }
+    }
+
+    private fun stateFromItems(
+        items: List<Photo>,
+        page: Int,
+        totalPages: Int,
+        query: String?,
+    ): PhotosListState =
+        if (items.isEmpty()) PhotosListState.Empty(query)
+        else PhotosListState.Photos(
+            query = query,
+            items = items,
+            currentPage = page,
+            totalPages = totalPages,
+            isLoadingMore = false,
+        )
 
     private fun persistAndSchedulePolling(firstPageIds: List<String>, query: String) {
         viewModelScope.launch {
             activeSearchPollStateDataSource.savePollState(query, firstPageIds)
             val request = PeriodicWorkRequestBuilder<PhotosPollWorker>(
                 POLL_INTERVAL_MINUTES, TimeUnit.MINUTES
-            ).build()
+            ).setInitialDelay(POLL_INTERVAL_MINUTES, TimeUnit.MINUTES).build()
             workManager.enqueueUniquePeriodicWork(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.REPLACE,
                 request,
             )
         }
-    }
-
-    private suspend fun loadSearchPage(page: Int, query: String, replace: Boolean) {
-        if (query.isBlank()) return
-        if (replace) {
-            _state.value = PhotosListState.Loading(query)
-        }
-        else {
-            val current = _state.value as? PhotosListState.SearchResults
-            if (current != null && current.query == query) {
-                _state.value = current.copy(isLoadingMore = true)
-            }
-        }
-        searchPhotosUseCase(query = query, page = page, perPage = PAGE_SIZE)
-            .onSuccess { result ->
-                when (val current = _state.value) {
-                    is PhotosListState.SearchResults -> if (!replace && current.query == query && current.isLoadingMore) {
-                        _state.value = current.copy(
-                            items = (current.items + result.items).distinctBy { it.id },
-                            currentPage = result.page,
-                            totalPages = result.totalPages,
-                            isLoadingMore = false,
-                        )
-                    } else {
-                        val newState = when {
-                            result.items.isEmpty() -> PhotosListState.Empty(query)
-                            else -> PhotosListState.SearchResults(
-                                query = query,
-                                items = result.items,
-                                currentPage = result.page,
-                                totalPages = result.totalPages,
-                                isLoadingMore = false,
-                            )
-                        }
-                        _state.value = newState
-                        if (newState is PhotosListState.SearchResults) {
-                            persistAndSchedulePolling(
-                                newState.items.take(PAGE_SIZE).map { it.id },
-                                newState.query,
-                            )
-                        }
-                    }
-                    else -> {
-                        val newState = when {
-                            result.items.isEmpty() -> PhotosListState.Empty(query)
-                            else -> PhotosListState.SearchResults(
-                                query = query,
-                                items = result.items,
-                                currentPage = result.page,
-                                totalPages = result.totalPages,
-                                isLoadingMore = false,
-                            )
-                        }
-                        _state.value = newState
-                        if (newState is PhotosListState.SearchResults) {
-                            persistAndSchedulePolling(
-                                newState.items.take(PAGE_SIZE).map { it.id },
-                                newState.query,
-                            )
-                        }
-                    }
-                }
-            }
-            .onFailure { t ->
-                val current = _state.value as? PhotosListState.SearchResults
-                if (replace || current == null || current.query != query) {
-                    _state.value = PhotosListState.Error(t, query)
-                } else {
-                    _state.value = current.copy(isLoadingMore = false)
-                }
-            }
     }
 
     companion object {

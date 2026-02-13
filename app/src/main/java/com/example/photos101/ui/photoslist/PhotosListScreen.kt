@@ -169,15 +169,7 @@ private fun PhotosListContent(
             modifier = modifier,
         )
         is PhotosListState.Empty -> PhotosListEmpty(modifier = modifier)
-        is PhotosListState.RecentPhotos -> PhotosGrid(
-            photos = state.items,
-            isLoadingMore = state.isLoadingMore,
-            hasMore = state.hasMore,
-            onPhotoClick = onPhotoClick,
-            onLoadMore = onLoadMore,
-            modifier = modifier,
-        )
-        is PhotosListState.SearchResults -> PhotosGrid(
+        is PhotosListState.Photos -> PhotosGrid(
             photos = state.items,
             isLoadingMore = state.isLoadingMore,
             hasMore = state.hasMore,
@@ -291,7 +283,8 @@ private fun PhotosListScreenPreviewRecent() {
     Photos101Theme {
         PhotosListScreen(
             viewModel = null,
-            previewState = PhotosListState.RecentPhotos(
+            previewState = PhotosListState.Photos(
+                query = null,
                 items = previewSamplePhotos,
                 currentPage = 1,
                 totalPages = 2,
@@ -308,7 +301,7 @@ private fun PhotosListScreenPreviewSearchResults() {
     Photos101Theme {
         PhotosListScreen(
             viewModel = null,
-            previewState = PhotosListState.SearchResults(
+            previewState = PhotosListState.Photos(
                 query = "cats",
                 items = previewSamplePhotos,
                 currentPage = 1,

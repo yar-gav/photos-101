@@ -7,19 +7,12 @@ import com.example.photos101.domain.model.Photo
  */
 sealed class PhotosListState {
 
-    /** Displaying the recent photos list (with optional load-more in progress). */
-    data class RecentPhotos(
-        val items: List<Photo>,
-        val currentPage: Int,
-        val totalPages: Int,
-        val isLoadingMore: Boolean = false,
-    ) : PhotosListState() {
-        val hasMore: Boolean get() = currentPage < totalPages
-    }
-
-    /** Displaying search results (with optional load-more in progress). */
-    data class SearchResults(
-        val query: String,
+    /**
+     * Displaying a photo list (recent or search) with optional load-more in progress.
+     * [query] is null for "recent photos", non-null for search results.
+     */
+    data class Photos(
+        val query: String?,
         val items: List<Photo>,
         val currentPage: Int,
         val totalPages: Int,
