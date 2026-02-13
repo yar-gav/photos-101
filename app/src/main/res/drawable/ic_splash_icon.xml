@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 21dp inset = 66dp safe zone so the full icon fits; otherwise the mask crops to the top (blue sky). -->
+<!-- Larger inset (36dp) so the full icon fits inside the splash screen circle. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:left="32dp"
-        android:top="32dp"
-        android:right="32dp"
-        android:bottom="32dp">
+        android:left="48dp"
+        android:top="48dp"
+        android:right="48dp"
+        android:bottom="48dp">
         <bitmap
             android:src="@drawable/ic_photos_gallery"
             android:gravity="fill" />
