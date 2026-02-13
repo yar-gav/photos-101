@@ -243,7 +243,8 @@ class PhotosListViewModel(
     companion object {
         private const val PAGE_SIZE = 30
         private const val DEBOUNCE_MS = 400L
-        private const val POLL_INTERVAL_MINUTES = 1L
+        /** WorkManager enforces a minimum of 15 minutes for periodic work; shorter values are clamped. */
+        private const val POLL_INTERVAL_MINUTES = 15L
         const val WORK_NAME = "photos_poll"
     }
 }

@@ -85,7 +85,7 @@ class PhotosPollWorker(
         val title = context.getString(R.string.notification_new_photos_title)
         val text = context.getString(R.string.notification_new_photos_search, newCount)
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_gallery)
+            .setSmallIcon(R.drawable.ic_photos_gallery)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
