@@ -3,7 +3,6 @@ package com.example.photos101.ui.photoslist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.photos101.worker.PhotosPollWorker
@@ -58,17 +57,6 @@ class PhotosListViewModel(
         viewModelScope.launch {
             activeSearchPollStateDataSource.clearPollState()
         }
-    }
-
-    /**
-     * Enqueues the poll worker once with no delay. Use for testing: run this while you have
-     * an active search, then check Logcat for "PhotosPollWorker" or wait for a notification.
-     */
-    fun runPollWorkerOnceForTesting() {
-        val request = OneTimeWorkRequestBuilder<PhotosPollWorker>()
-            .setInitialDelay(0, TimeUnit.SECONDS)
-            .build()
-        workManager.enqueue(request)
     }
 
     fun dispatch(intent: PhotosListUiActions) {
@@ -160,13 +148,9 @@ class PhotosListViewModel(
     private fun persistAndSchedulePolling(firstPageIds: List<String>, query: String) {
         viewModelScope.launch {
             activeSearchPollStateDataSource.savePollState(query, firstPageIds)
-            // Use repeat + flex so the run window is the full period; first run can happen soon (within 0–15 min).
-            // Without flex, some devices defer the first run to the end of the period.
             val request = PeriodicWorkRequestBuilder<PhotosPollWorker>(
                 POLL_INTERVAL_MINUTES, TimeUnit.MINUTES
-            )
-                .setInitialDelay(0, TimeUnit.SECONDS)
-                .build()
+            ).build()
             workManager.enqueueUniquePeriodicWork(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.REPLACE,

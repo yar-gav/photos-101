@@ -73,11 +73,6 @@ fun PhotosListScreen(
                     }
                 },
                 actions = {
-                    if (state is PhotosListState.SearchResults) {
-                        TextButton(onClick = { viewModel.runPollWorkerOnceForTesting() }) {
-                            Text("Test poll")
-                        }
-                    }
                     if (isSearchExpanded) {
                         IconButton(onClick = {
                             userExpandedSearch = false
